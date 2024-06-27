@@ -12,24 +12,20 @@ export default {
     async fetch(request, env, ctx) {
         const response = await env.AI.run(
             "@hf/nousresearch/hermes-2-pro-mistral-7b", {
-                messages: [{ role: "user", content: "What's the weather in Austin, Texas?" }],
+                messages: [{ role: "user", content: "Who is Cloudflare on github?" }],
                 tools: [
                     {
-                        name: "getWeather",
-                        description: "Return the weather for a latitude and longitude",
+                        name: "getGithubUser",
+                        description: "Provides publicly available information about someone with a GitHub account.",
                         parameters: {
                             type: "object",
                             properties: {
-                                latitude: {
+                                username: {
                                     type: "string",
-                                    description: "The latitude for the given location",
-                                },
-                                longitude: {
-                                    type: "string",
-                                    description: "The longitude for the given location",
+                                    description: "The handle for the GitHub user account.",
                                 },
                             },
-                            required: ["latitude", "longitude"],
+                            required: ["username"],
                         },
                     },
                 ],
@@ -39,13 +35,15 @@ export default {
         const selected_tool = response.tool_calls[0];
         let res;
 
-        if (selected_tool.name == 'getWeather') {
+        if (selected_tool.name == 'getGithubUser') {
             try {
-                const latitude = selected_tool.arguments.latitude;
-                const longitude = selected_tool.arguments.longitude;
-
-                const url = `https://api.weatherapi.com/v1/current.json?key=${env.WEATHERAPI_TOKEN}&q=${latitude},${longitude}`;
-                res = await fetch(url).then((res) => res.json());
+                const username = selected_tool.arguments.username;
+                const url = `https://api.github.com/users/${username}`;
+                res = await fetch(url, {
+                    headers: {
+                        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
+                    }
+                }).then((res) => res.json());
             }
             catch (error) {
                 return error;
@@ -54,7 +52,7 @@ export default {
 
         const finalResponse = await env.AI.run("@hf/nousresearch/hermes-2-pro-mistral-7b", {
                 messages: [
-                    { role: "user", content: "What's the weather in Austin, Texas?" },
+                    { role: "user", content: "Who is Cloudflare on github?" },
                     {
                         role: "assistant",
                         content: "",
@@ -68,21 +66,17 @@ export default {
                 ],
                 tools: [
                     {
-                        name: "getWeather",
-                        description: "Return the weather for a latitude and longitude",
+                        name: "getGithubUser",
+                        description: "Provides publicly available information about someone with a GitHub account.",
                         parameters: {
                             type: "object",
                             properties: {
-                                latitude: {
+                                username: {
                                     type: "string",
-                                    description: "The latitude for the given location",
-                                },
-                                longitude: {
-                                    type: "string",
-                                    description: "The longitude for the given location",
+                                    description: "The handle for the GitHub user account.",
                                 },
                             },
-                            required: ["latitude", "longitude"],
+                            required: ["username"],
                         },
                     },
                 ],                
@@ -90,6 +84,5 @@ export default {
         );
 
     return new Response(JSON.stringify(finalResponse));
-    
     }
 }
